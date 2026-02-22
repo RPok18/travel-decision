@@ -8,34 +8,21 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark transition-colors duration-200">
       {/* ── Top navbar ────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 h-12">
+      <header className="sticky top-0 z-50 border-b border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark transition-colors">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 h-16">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-lg font-extrabold text-accent"
+            className="flex items-center gap-2 text-xl font-bold text-ink dark:text-white"
           >
-            {/* Reddit-style icon */}
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="11" fill="currentColor" />
-              <circle cx="8.5" cy="11" r="1.5" fill="white" />
-              <circle cx="15.5" cy="11" r="1.5" fill="white" />
-              <path
-                d="M8 15c0 0 1.5 2 4 2s4-2 4-2"
-                stroke="white"
-                strokeWidth="1.2"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="hidden sm:inline">TravelDecision</span>
+            <span className="">TravelThreads</span>
           </Link>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-lg mx-4">
+          {/* Search bar - wider and more integrated */}
+          <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-light dark:text-muted-dark"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -46,47 +33,65 @@ export default function Layout({ children }: { children: ReactNode }) {
               </svg>
               <input
                 type="text"
-                placeholder="Search Travel Decision"
-                className="w-full rounded-full border border-border-light dark:border-border-dark bg-hover-light dark:bg-hover-dark pl-9 pr-4 py-1.5 text-sm text-ink dark:text-gray-200 placeholder:text-muted-light dark:placeholder:text-muted-dark focus:border-accent-blue focus:outline-none transition-colors"
+                placeholder="Search posts (city, wifi, price...)"
+                className="w-full rounded-2xl border-none bg-hover-light dark:bg-hover-dark pl-11 pr-4 py-2.5 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:ring-1 focus:ring-accent-blue/50 outline-none transition-all"
               />
             </div>
           </div>
 
-          {/* Right icons */}
-          <nav className="flex items-center gap-1">
-            <Link
-              href="/"
-              className="p-2 rounded hover:bg-hover-light dark:hover:bg-hover-dark text-muted-light dark:text-muted-dark hover:text-ink dark:hover:text-gray-200 transition-colors"
-              title="Home"
-            >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2L2 9h3v8h4v-5h2v5h4V9h3L10 2z" />
-              </svg>
-            </Link>
-            <Link
-              href="/search"
-              className="p-2 rounded hover:bg-hover-light dark:hover:bg-hover-dark text-muted-light dark:text-muted-dark hover:text-ink dark:hover:text-gray-200 transition-colors"
-              title="Search"
-            >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M8 3a5 5 0 104.906 6H8V3zM2 9a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 9z" />
-              </svg>
-            </Link>
-            <Link
-              href="/messages"
-              className="p-2 rounded hover:bg-hover-light dark:hover:bg-hover-dark text-muted-light dark:text-muted-dark hover:text-ink dark:hover:text-gray-200 transition-colors"
-              title="Messages"
-            >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v7a2 2 0 01-2 2H8l-4 3v-3H4a2 2 0 01-2-2V5z" />
-              </svg>
+          {/* Navigation with icons and labels */}
+          <nav className="flex items-center gap-6">
+            <Link href="/" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Home</span>
             </Link>
 
-            {/* Dark/Light toggle */}
+            <Link href="/communities" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-10a4 4 0 11-8 0 4 4 0 018 0zM9 7a4 4 0 11-8 0 4 4 0 018 0zm10 14v-2a4 4 0 00-3-3.87M21 12a4 4 0 010 7.75" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Communities</span>
+            </Link>
+
+            <Link href="/messages" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Messages</span>
+            </Link>
+
+            <Link href="/likes" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Likes</span>
+            </Link>
+
+            <Link href="/profile" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <div className="w-6 h-6 rounded-full bg-border-dark flex items-center justify-center overflow-hidden border border-transparent group-hover:border-muted-dark">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Profile</span>
+            </Link>
+
+            {/* Dark/Light toggle - shifted to the end */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded hover:bg-hover-light dark:hover:bg-hover-dark text-muted-light dark:text-muted-dark hover:text-ink dark:hover:text-gray-200 transition-colors"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="p-2 rounded-xl bg-hover-light dark:bg-hover-dark text-muted-dark hover:text-white transition-all ml-2"
             >
               {theme === "dark" ? (
                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
@@ -98,16 +103,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </svg>
               )}
             </button>
-
-            <Link
-              href="/profile"
-              className="p-2 rounded hover:bg-hover-light dark:hover:bg-hover-dark text-muted-light dark:text-muted-dark hover:text-ink dark:hover:text-gray-200 transition-colors"
-              title="Profile"
-            >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-            </Link>
           </nav>
         </div>
       </header>

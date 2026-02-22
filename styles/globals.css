@@ -35,7 +35,7 @@ body {
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #030303;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -44,5 +44,5 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #262626;
 }

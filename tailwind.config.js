@@ -18,12 +18,12 @@ module.exports = {
         "border-light": "#ccc",
         "hover-light": "#f6f7f8",
         "muted-light": "#7c7c7c",
-        // Dark mode surfaces
-        "surface-dark": "#030303",
-        "card-dark": "#1a1a1b",
-        "border-dark": "#343536",
-        "hover-dark": "#272729",
-        "muted-dark": "#818384",
+        // Dark mode surfaces (TravelThreads-inspired)
+        "surface-dark": "#000000",
+        "card-dark": "#121212",
+        "border-dark": "#262626",
+        "hover-dark": "#1e1e1e",
+        "muted-dark": "#717171",
       },
     },
   },

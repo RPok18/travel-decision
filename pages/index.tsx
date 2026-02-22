@@ -26,60 +26,84 @@ export default function Home({ items }: FeedProps) {
   return (
     <Layout>
       {/* ── Sort tabs ─────────────────────────── */}
-      <div className="mb-3 flex items-center gap-2 rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-2">
-        <button
-          onClick={() => setSort("hot")}
-          className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${sort === "hot"
-              ? "bg-hover-light dark:bg-hover-dark text-ink dark:text-gray-100"
-              : "text-muted-light dark:text-muted-dark hover:bg-hover-light dark:hover:bg-hover-dark"
-            }`}
-        >
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" />
-          </svg>
-          Hot
-        </button>
-        <button
-          onClick={() => setSort("latest")}
-          className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${sort === "latest"
-              ? "bg-hover-light dark:bg-hover-dark text-ink dark:text-gray-100"
-              : "text-muted-light dark:text-muted-dark hover:bg-hover-light dark:hover:bg-hover-dark"
-            }`}
-        >
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-          </svg>
-          New
-        </button>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 bg-card-dark rounded-2xl p-1 border border-border-dark">
+          <button
+            onClick={() => setSort("hot")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${sort === "hot"
+              ? "bg-hover-dark text-white shadow-sm"
+              : "text-muted-dark hover:text-gray-300"
+              }`}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.99 7.99 0 0120 13a7.99 7.99 0 01-2.343 5.657z" />
+              <path d="M9.879 16.121A3 3 0 1012.015 11L11 14l-.622.622c-1.121 1.12-1.121 2.937 0 4.058l.622.622" />
+            </svg>
+            Hot
+          </button>
+          <button
+            onClick={() => setSort("latest")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${sort === "latest"
+              ? "bg-hover-dark text-white shadow-sm"
+              : "text-muted-dark hover:text-gray-300"
+              }`}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            New
+          </button>
+        </div>
+
+        <div className="text-xs text-muted-dark font-medium">
+          Feed: <span className="text-white capitalize">{sort}</span>
+        </div>
       </div>
 
-      {/* ── Create post ────────────────────────── */}
-      <form
-        method="post"
-        action="/api/create-thread"
-        className="mb-3 flex items-center gap-3 rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-2"
-      >
-        {/* Avatar placeholder */}
-        <div className="w-8 h-8 rounded-full bg-hover-light dark:bg-hover-dark border border-border-light dark:border-border-dark flex-shrink-0" />
-
-        <input
-          type="text"
-          name="question_text"
-          placeholder="Create Post"
-          required
-          className="flex-1 rounded-md border border-border-light dark:border-border-dark bg-hover-light dark:bg-hover-dark px-3 py-1.5 text-sm text-ink dark:text-gray-200 placeholder:text-muted-light dark:placeholder:text-muted-dark focus:border-accent-blue focus:outline-none transition-colors"
-        />
-
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-4 py-1.5 text-sm font-bold text-white hover:brightness-110 transition-all active:scale-95"
+      {/* ── Create post (TravelThreads style) ────────────────────────── */}
+      <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-6 mb-8 shadow-sm">
+        <h2 className="text-sm font-bold text-ink dark:text-gray-100 mb-4">Start a post</h2>
+        <form
+          method="post"
+          action="/api/create-thread"
+          className="relative"
         >
-          Post
-        </button>
-      </form>
+          <div className="flex gap-4">
+            <div className="w-10 h-10 rounded-full bg-hover-dark flex-shrink-0 flex items-center justify-center overflow-hidden border border-border-dark">
+              <svg width="24" height="24" fill="currentColor" className="text-muted-dark" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+            </div>
+
+            <div className="flex-1 space-y-4">
+              <textarea
+                name="question_text"
+                rows={2}
+                placeholder="What's your travel question today?"
+                required
+                className="w-full rounded-xl border border-border-light dark:border-border-dark bg-transparent px-4 py-3 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 outline-none transition-all resize-none"
+              />
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-[10px] text-muted-dark space-y-1">
+                  <p>0/280</p>
+                  <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                </div>
+
+                <button
+                  type="submit"
+                  className="rounded-full bg-accent-blue px-8 py-2 text-sm font-bold text-white transition-all shadow-md shadow-accent-blue/20 hover:brightness-110 active:scale-95"
+                >
+                  Post
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
 
       {/* ── Posts list ──────────────────────────── */}
-      <div className="space-y-2">
+      <div className="space-y-4">
         {items.map((item) => (
           <PostCard
             key={item.id}
@@ -94,8 +118,8 @@ export default function Home({ items }: FeedProps) {
         ))}
 
         {items.length === 0 && (
-          <div className="rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-8 text-center">
-            <p className="text-muted-light dark:text-muted-dark text-sm">
+          <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-12 text-center">
+            <p className="text-muted-dark text-sm">
               No posts yet. Be the first to create a thread!
             </p>
           </div>
