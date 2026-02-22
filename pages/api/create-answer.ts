@@ -6,24 +6,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // API Route for posting answers (Unauthenticated)
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    const { question_id, answer_text, email } = req.body;
-    const userEmail = email || "member@travel.dev"; // Default for MVP
+    const { question_id, answer_text } = req.body;
+    const authHeader = req.headers.authorization;
 
     if (!question_id || !answer_text) {
         return res.status(400).json({ error: "Missing required fields" });
     }
 
     try {
-        // 2. Post Answer directly (unauthenticated, backend handles user resolution by email)
         const postRes = await fetch(`${API_URL}/answers`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...(authHeader ? { "Authorization": authHeader } : {})
             },
             body: JSON.stringify({
                 question_id: Number(question_id),
-                answer_text,
-                email: userEmail
+                answer_text
             }),
         });
 

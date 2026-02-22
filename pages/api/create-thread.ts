@@ -8,10 +8,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const question_text = String(req.body?.question_text || "").trim();
   if (!question_text) return res.status(400).json({ error: "question_text is required" });
 
+  const authHeader = req.headers.authorization;
+
   try {
     const r = await fetch(`${API_URL}/feed`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { "Authorization": authHeader } : {})
+      },
       body: JSON.stringify({ question_text }),
     });
 

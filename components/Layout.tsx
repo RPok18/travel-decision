@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { useTheme } from "./ThemeProvider";
+import { useAuth } from "./AuthContext";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const { isLoggedIn, isGuest, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark transition-colors duration-200">
@@ -20,9 +22,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           {/* Search bar - wider and more integrated */}
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
-            <div className="relative">
+            <div className="relative group">
               <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark group-focus-within:text-accent-blue transition-colors"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -33,9 +35,16 @@ export default function Layout({ children }: { children: ReactNode }) {
               </svg>
               <input
                 type="text"
-                placeholder="Search posts (city, wifi, price...)"
+                placeholder={isGuest ? "Search restricted for guests..." : "Search posts (city, wifi, price...)"}
                 className="w-full rounded-2xl border-none bg-hover-light dark:bg-hover-dark pl-11 pr-4 py-2.5 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:ring-1 focus:ring-accent-blue/50 outline-none transition-all"
               />
+              {isGuest && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <span className="text-[10px] font-bold text-accent px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+                    GUEST
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -59,34 +68,64 @@ export default function Layout({ children }: { children: ReactNode }) {
               <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Communities</span>
             </Link>
 
-            <Link href="/messages" className="flex flex-col items-center gap-1 group">
-              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Messages</span>
-            </Link>
+            {!isGuest && (
+              <>
+                <Link href="/messages" className="flex flex-col items-center gap-1 group">
+                  <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Messages</span>
+                </Link>
 
-            <Link href="/likes" className="flex flex-col items-center gap-1 group">
-              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Likes</span>
-            </Link>
+                <Link href="/likes" className="flex flex-col items-center gap-1 group">
+                  <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Likes</span>
+                </Link>
 
-            <Link href="/profile" className="flex flex-col items-center gap-1 group">
-              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
-                <div className="w-6 h-6 rounded-full bg-border-dark flex items-center justify-center overflow-hidden border border-transparent group-hover:border-muted-dark">
-                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
+                <button onClick={logout} className="flex flex-col items-center gap-1 group">
+                  <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Logout</span>
+                </button>
+              </>
+            )}
+
+            {isGuest ? (
+              <div className="flex items-center gap-2 ml-2">
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-full text-sm font-bold text-white hover:bg-hover-dark transition-colors"
+                >
+                  Log In
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-full bg-white text-black text-sm font-bold hover:bg-gray-200 transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            ) : (
+              <Link href="/profile" className="flex flex-col items-center gap-1 group">
+                <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                  <div className="w-6 h-6 rounded-full bg-border-dark flex items-center justify-center overflow-hidden border border-transparent group-hover:border-muted-dark transition-all">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Profile</span>
-            </Link>
+                <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Profile</span>
+              </Link>
+            )}
 
             {/* Dark/Light toggle - shifted to the end */}
             <button

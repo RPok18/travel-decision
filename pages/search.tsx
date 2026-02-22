@@ -30,20 +30,36 @@ interface SearchProps {
   topics: Topic[];
 }
 
+import { useAuth } from "../components/AuthContext";
+
 export default function Search({ cards, cities, topics }: SearchProps) {
   const router = useRouter();
+  const { isGuest } = useAuth();
+
+  // Limited results for guests
+  const displayCards = isGuest ? cards.slice(0, 2) : cards;
 
   return (
     <Layout>
       <section className="space-y-4">
         {/* Header */}
-        <div className="rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-4">
-          <h1 className="text-xl font-bold text-ink dark:text-gray-100">
-            Scenario Search
-          </h1>
-          <p className="mt-1 text-sm text-muted-light dark:text-muted-dark">
-            Filter experience cards by city, topic, budget, and stay duration.
-          </p>
+        <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-6 transition-all shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-ink dark:text-gray-100 italic">
+                Scenario Search
+              </h1>
+              <p className="mt-1 text-sm text-muted-dark">
+                Filter experience cards by city, topic, budget, and stay duration.
+              </p>
+            </div>
+            {isGuest && (
+              <div className="rounded-2xl bg-accent/10 border border-accent/20 p-3 max-w-[200px]">
+                <p className="text-[10px] font-bold text-accent uppercase mb-1">Guest Mode</p>
+                <p className="text-[11px] text-muted-dark leading-tight">Search results are limited. Log in for full access.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -130,7 +146,7 @@ export default function Search({ cards, cities, topics }: SearchProps) {
 
         {/* Results */}
         <div className="grid gap-3">
-          {cards.map((card) => (
+          {displayCards.map((card) => (
             <CardItem
               key={card.id}
               id={card.id}
@@ -141,8 +157,8 @@ export default function Search({ cards, cities, topics }: SearchProps) {
               duration={card.duration}
             />
           ))}
-          {cards.length === 0 && (
-            <div className="rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-8 text-center text-sm text-muted-light dark:text-muted-dark">
+          {displayCards.length === 0 && (
+            <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-12 text-center text-sm text-muted-dark shadow-sm">
               No cards match your filters.
             </div>
           )}

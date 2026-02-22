@@ -19,9 +19,44 @@ type FeedProps = {
   items: FeedItem[];
 };
 
+import { useAuth } from "../components/AuthContext";
+
 export default function Home({ items }: FeedProps) {
   const router = useRouter();
   const [sort, setSort] = useState<"latest" | "hot">("latest");
+  const { isGuest } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isGuest) return;
+
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const question_text = formData.get("question_text");
+    const token = localStorage.getItem("access_token");
+
+    try {
+      const res = await fetch("/api/create-thread", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ question_text }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      router.replace(router.asPath);
+      (e.target as HTMLFormElement).reset();
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      alert(err.message || "Failed to post");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Layout>
@@ -61,46 +96,67 @@ export default function Home({ items }: FeedProps) {
       </div>
 
       {/* ── Create post (TravelThreads style) ────────────────────────── */}
-      <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-6 mb-8 shadow-sm">
-        <h2 className="text-sm font-bold text-ink dark:text-gray-100 mb-4">Start a post</h2>
-        <form
-          method="post"
-          action="/api/create-thread"
-          className="relative"
-        >
-          <div className="flex gap-4">
-            <div className="w-10 h-10 rounded-full bg-hover-dark flex-shrink-0 flex items-center justify-center overflow-hidden border border-border-dark">
-              <svg width="24" height="24" fill="currentColor" className="text-muted-dark" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-            </div>
+      {isGuest ? (
+        <div className="rounded-3xl border border-dashed border-border-dark bg-card-dark/50 p-8 mb-8 text-center">
+          <h3 className="text-lg font-bold text-white mb-2">Join the community!</h3>
+          <p className="text-sm text-muted-dark mb-6">Log in or sign up to share your travel questions and help others.</p>
+          <div className="flex justify-center gap-4">
+            <Link
+              href="/login"
+              className="px-8 py-2 rounded-full bg-hover-dark text-sm font-bold text-white hover:bg-border-dark transition-all"
+            >
+              Log In
+            </Link>
+            <Link
+              href="/login"
+              className="px-8 py-2 rounded-full bg-accent-blue text-sm font-bold text-white hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-6 mb-8 shadow-sm">
+          <h2 className="text-sm font-bold text-ink dark:text-gray-100 mb-4">Start a post</h2>
+          <form
+            onSubmit={handleSubmit}
+            className="relative"
+          >
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-full bg-hover-dark flex-shrink-0 flex items-center justify-center overflow-hidden border border-border-dark">
+                <svg width="24" height="24" fill="currentColor" className="text-muted-dark" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
 
-            <div className="flex-1 space-y-4">
-              <textarea
-                name="question_text"
-                rows={2}
-                placeholder="What's your travel question today?"
-                required
-                className="w-full rounded-xl border border-border-light dark:border-border-dark bg-transparent px-4 py-3 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 outline-none transition-all resize-none"
-              />
+              <div className="flex-1 space-y-4">
+                <textarea
+                  name="question_text"
+                  rows={2}
+                  placeholder="What's your travel question today?"
+                  required
+                  className="w-full rounded-xl border border-border-light dark:border-border-dark bg-transparent px-4 py-3 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 outline-none transition-all resize-none"
+                />
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="text-[10px] text-muted-dark space-y-1">
-                  <p>0/280</p>
-                  <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-[10px] text-muted-dark space-y-1">
+                    <p>0/280</p>
+                    <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`rounded-full bg-accent-blue px-8 py-2 text-sm font-bold text-white transition-all shadow-md shadow-accent-blue/20 ${isSubmitting ? 'opacity-50' : 'hover:brightness-110 active:scale-95'}`}
+                  >
+                    {isSubmitting ? "Posting..." : "Post"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  className="rounded-full bg-accent-blue px-8 py-2 text-sm font-bold text-white transition-all shadow-md shadow-accent-blue/20 hover:brightness-110 active:scale-95"
-                >
-                  Post
-                </button>
               </div>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       {/* ── Posts list ──────────────────────────── */}
       <div className="space-y-4">

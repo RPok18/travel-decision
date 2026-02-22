@@ -210,6 +210,14 @@ def login_simple(form_data: OAuth2PasswordRequestForm = Depends(), db: Session =
     return {"access_token": token, "token_type": "bearer"}
 
 
+@router.get("/users/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Get current user details.
+    """
+    return {"id": current_user.id, "email": current_user.email, "is_admin": current_user.is_admin}
+
+
 @router.get("/cities", response_model=List[CityBase])
 def list_cities(db: Session = Depends(get_db)):
     return db.query(City).order_by(City.name.asc()).all()
@@ -248,6 +256,28 @@ def create_question(
     db.refresh(question)
     logger.info("Question created %s by %s", question.id, current_user.email)
     return question
+
+
+@router.delete("/questions/{question_id}")
+def delete_question(
+    question_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    
+    if question.author_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this question")
+    
+    # Delete associated answers first (manual cascade)
+    db.query(Answer).filter(Answer.question_id == question_id).delete()
+    
+    db.delete(question)
+    db.commit()
+    logger.info("Question %s deleted by %s", question_id, current_user.email)
+    return {"status": "ok"}
 
 
 @router.get("/questions", response_model=List[QuestionBase])
