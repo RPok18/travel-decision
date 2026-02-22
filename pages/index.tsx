@@ -1,6 +1,7 @@
 import { GetServerSideProps } from "next";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import Layout from "../components/Layout";
 import PostCard from "../components/PostCard";
 import { fetcher } from "../lib/api-client";
@@ -166,6 +167,7 @@ export default function Home({ items }: FeedProps) {
             id={item.id}
             title={item.title}
             authorName={item.author.display_name}
+            authorId={item.author.id}
             createdAt={item.created_at}
             lastMessageAt={item.last_message_at}
             answerCount={item.answer_count ?? 0}
