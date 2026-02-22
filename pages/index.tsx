@@ -109,7 +109,7 @@ export default function Home({ items }: FeedProps) {
               Log In
             </Link>
             <Link
-              href="/login"
+              href="/login?mode=signup"
               className="px-8 py-2 rounded-full bg-accent-blue text-sm font-bold text-white hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20"
             >
               Sign Up

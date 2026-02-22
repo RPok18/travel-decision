@@ -108,7 +108,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   Log In
                 </Link>
                 <Link
-                  href="/login"
+                  href="/login?mode=signup"
                   className="px-4 py-2 rounded-full bg-white text-black text-sm font-bold hover:bg-gray-200 transition-colors"
                 >
                   Sign Up
