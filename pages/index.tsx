@@ -14,6 +14,7 @@ type FeedItem = {
   author: { id: number; display_name: string };
   answer_count?: number;
   vote_score?: number;
+  like_count?: number;
 };
 
 type FeedProps = {
@@ -172,6 +173,7 @@ export default function Home({ items }: FeedProps) {
             lastMessageAt={item.last_message_at}
             answerCount={item.answer_count ?? 0}
             voteScore={item.vote_score ?? 0}
+            likeCount={item.like_count ?? 0}
           />
         ))}
 

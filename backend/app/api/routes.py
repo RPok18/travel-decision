@@ -64,6 +64,15 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
         .subquery()
     )
 
+    answer_count_sq = (
+        db.query(
+            Answer.question_id.label("question_id"),
+            func.count(Answer.id).label("answer_count"),
+        )
+        .group_by(Answer.question_id)
+        .subquery()
+    )
+
     rows = (
         db.query(
             Question.id,
@@ -72,14 +81,32 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
             User.id.label("author_id"),
             User.email.label("author_name"),
             last_answer_sq.c.last_message_at,
+            answer_count_sq.c.answer_count,
         )
         .join(User, User.id == Question.author_id)
         .outerjoin(last_answer_sq, last_answer_sq.c.question_id == Question.id)
+        .outerjoin(answer_count_sq, answer_count_sq.c.question_id == Question.id)
         .order_by(func.coalesce(last_answer_sq.c.last_message_at, Question.created_at).desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
+
+    # Fetch like counts for all retrieved question ids
+    question_ids = [r.id for r in rows]
+    like_counts: dict = {}
+    if question_ids:
+        like_rows = (
+            db.query(Reaction.entity_id, func.count(Reaction.id).label("cnt"))
+            .filter(
+                Reaction.entity_type == EntityType.question,
+                Reaction.entity_id.in_(question_ids),
+                Reaction.reaction_type == ReactionType.thanks,
+            )
+            .group_by(Reaction.entity_id)
+            .all()
+        )
+        like_counts = {r.entity_id: r.cnt for r in like_rows}
 
     items = []
     for r in rows:
@@ -91,6 +118,8 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "last_message_at": r.last_message_at.isoformat() if r.last_message_at else None,
                 "author": {"id": r.author_id, "display_name": r.author_name},
+                "answer_count": r.answer_count or 0,
+                "like_count": like_counts.get(r.id, 0),
             }
         )
 
@@ -313,9 +342,12 @@ def get_question(question_id: int, db: Session = Depends(get_db)):
         )
     help_map = {reaction.entity_id for reaction in reactions if reaction.reaction_type == ReactionType.helped}
     save_counts = {}
+    like_counts = {}
     for reaction in reactions:
         if reaction.reaction_type == ReactionType.saved:
             save_counts[reaction.entity_id] = save_counts.get(reaction.entity_id, 0) + 1
+        if reaction.reaction_type == ReactionType.thanks:
+            like_counts[reaction.entity_id] = like_counts.get(reaction.entity_id, 0) + 1
     contributor_helped_counts = {
         answer.user_id: db.query(Reaction)
         .join(Answer, Reaction.entity_id == Answer.id)
@@ -332,9 +364,26 @@ def get_question(question_id: int, db: Session = Depends(get_db)):
             answer.created_at,
         ),
     )
+    # Question-level like count
+    question_like_count = (
+        db.query(Reaction)
+        .filter(
+            Reaction.entity_type == EntityType.question,
+            Reaction.entity_id == question_id,
+            Reaction.reaction_type == ReactionType.thanks,
+        )
+        .count()
+    )
+
+    def answer_to_dict(answer):
+        base = AnswerBase.model_validate(answer).model_dump()
+        base["like_count"] = like_counts.get(answer.id, 0)
+        return base
+
     return {
         "question": QuestionBase.model_validate(question),
-        "answers": [AnswerBase.model_validate(answer) for answer in answers_sorted],
+        "question_like_count": question_like_count,
+        "answers": [answer_to_dict(a) for a in answers_sorted],
     }
 
 
@@ -360,9 +409,17 @@ def create_answer(
     question = db.query(Question).filter(Question.id == payload.question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
+
+    # Validate reply_to_id if given
+    if payload.reply_to_id is not None:
+        parent = db.query(Answer).filter(Answer.id == payload.reply_to_id).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent answer not found")
+
     answer = Answer(
         question_id=payload.question_id,
         user_id=user.id,
+        reply_to_id=payload.reply_to_id,
         answer_text=payload.answer_text,
         context=payload.context or {},
         media_url=payload.media_url,
@@ -402,6 +459,41 @@ def create_reaction(
     db.commit()
     logger.info("Reaction %s created on %s %s", payload.reaction_type, payload.entity_type, payload.entity_id)
     return {"status": "ok"}
+
+
+@router.post("/reactions/toggle")
+def toggle_reaction(
+    payload: ReactionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Toggle a reaction on/off. If it already exists, delete it. Otherwise create it."""
+    existing = (
+        db.query(Reaction)
+        .filter(
+            Reaction.user_id == current_user.id,
+            Reaction.entity_type == EntityType(payload.entity_type),
+            Reaction.entity_id == payload.entity_id,
+            Reaction.reaction_type == ReactionType(payload.reaction_type),
+        )
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+        db.commit()
+        logger.info("Reaction %s removed from %s %s", payload.reaction_type, payload.entity_type, payload.entity_id)
+        return {"status": "removed", "liked": False}
+    else:
+        reaction = Reaction(
+            user_id=current_user.id,
+            entity_type=EntityType(payload.entity_type),
+            entity_id=payload.entity_id,
+            reaction_type=ReactionType(payload.reaction_type),
+        )
+        db.add(reaction)
+        db.commit()
+        logger.info("Reaction %s added on %s %s", payload.reaction_type, payload.entity_type, payload.entity_id)
+        return {"status": "added", "liked": True}
 
 
 @router.post("/reports")

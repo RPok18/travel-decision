@@ -54,10 +54,12 @@ class AnswerBase(BaseModel):
     id: int
     question_id: int
     user_id: int
+    reply_to_id: Optional[int] = None
     answer_text: str
     context: dict
     media_url: Optional[str]
     created_at: datetime
+    like_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

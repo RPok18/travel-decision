@@ -1,8 +1,8 @@
 import Link from "next/link";
-import VoteButton from "./VoteButton";
 import TimeAgo from "./TimeAgo";
 import { useAuth } from "./AuthContext";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
 interface PostCardProps {
     id: number;
@@ -13,6 +13,7 @@ interface PostCardProps {
     lastMessageAt: string | null;
     answerCount?: number;
     voteScore?: number;
+    likeCount?: number;
 }
 
 export default function PostCard({
@@ -24,13 +25,57 @@ export default function PostCard({
     lastMessageAt,
     answerCount = 0,
     voteScore = 0,
+    likeCount = 0,
 }: PostCardProps) {
-    const { user } = useAuth();
+    const { user, isGuest } = useAuth();
     const router = useRouter();
 
     const isAuthor = user && user.id === authorId;
     const isAdmin = user && user.isAdmin;
     const canDelete = isAuthor || isAdmin;
+
+    const [liked, setLiked] = useState(false);
+    const [localLikes, setLocalLikes] = useState(likeCount);
+    const [isLiking, setIsLiking] = useState(false);
+
+    const handleLike = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isGuest || isLiking) return;
+
+        setIsLiking(true);
+        const wasLiked = liked;
+        setLiked(!wasLiked);
+        setLocalLikes((prev) => (wasLiked ? prev - 1 : prev + 1));
+
+        try {
+            const token = localStorage.getItem("access_token");
+            const res = await fetch("/api/react", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token ? `Bearer ${token}` : "",
+                },
+                body: JSON.stringify({
+                    entity_type: "question",
+                    entity_id: id,
+                    reaction_type: "thanks",
+                }),
+            });
+            if (!res.ok) {
+                setLiked(wasLiked);
+                setLocalLikes((prev) => (wasLiked ? prev + 1 : prev - 1));
+            } else {
+                const data = await res.json();
+                setLiked(data.liked);
+            }
+        } catch {
+            setLiked(wasLiked);
+            setLocalLikes((prev) => (wasLiked ? prev + 1 : prev - 1));
+        } finally {
+            setIsLiking(false);
+        }
+    };
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -44,7 +89,7 @@ export default function PostCard({
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": token ? `Bearer ${token}` : ""
+                    Authorization: token ? `Bearer ${token}` : "",
                 },
                 body: JSON.stringify({ question_id: id }),
             });
@@ -69,9 +114,7 @@ export default function PostCard({
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="font-bold text-ink dark:text-white text-sm">
-                                {authorName}
-                            </span>
+                            <span className="font-bold text-ink dark:text-white text-sm">{authorName}</span>
                             <span className="text-muted-dark text-xs">•</span>
                             <span className="text-muted-dark text-xs">
                                 <TimeAgo date={lastMessageAt || createdAt} />
@@ -108,15 +151,41 @@ export default function PostCard({
 
             {/* Interaction Row */}
             <div className="flex items-center gap-6 mt-2">
-                <div className="flex items-center gap-2 group cursor-pointer">
-                    <div className="p-2 rounded-full group-hover:bg-red-500/10 transition-colors">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-red-500 transition-colors" viewBox="0 0 24 24">
+                {/* Like button */}
+                <button
+                    id={`like-post-${id}`}
+                    onClick={handleLike}
+                    disabled={isGuest || isLiking}
+                    className={`flex items-center gap-2 group transition-all ${isGuest ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                        }`}
+                    title={isGuest ? "Log in to like" : liked ? "Unlike" : "Like"}
+                >
+                    <div
+                        className={`p-2 rounded-full transition-colors ${liked ? "bg-red-500/10" : isGuest ? "" : "group-hover:bg-red-500/10"
+                            }`}
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            fill={liked ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className={`transition-colors ${liked ? "text-red-500" : "text-muted-dark group-hover:text-red-500"
+                                }`}
+                            viewBox="0 0 24 24"
+                        >
                             <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                     </div>
-                    <span className="text-sm font-medium text-muted-dark group-hover:text-red-500 transition-colors">{voteScore}</span>
-                </div>
+                    <span
+                        className={`text-sm font-medium transition-colors ${liked ? "text-red-500" : "text-muted-dark group-hover:text-red-500"
+                            }`}
+                    >
+                        {localLikes}
+                    </span>
+                </button>
 
+                {/* Comment count */}
                 <Link href={`/questions/${id}`} className="flex items-center gap-2 group cursor-pointer">
                     <div className="p-2 rounded-full group-hover:bg-accent-blue/10 transition-colors">
                         <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-accent-blue transition-colors" viewBox="0 0 24 24">
@@ -126,6 +195,7 @@ export default function PostCard({
                     <span className="text-sm font-medium text-muted-dark group-hover:text-accent-blue transition-colors">{answerCount}</span>
                 </Link>
 
+                {/* Share */}
                 <div className="flex items-center gap-2 group cursor-pointer">
                     <div className="p-2 rounded-full group-hover:bg-green-500/10 transition-colors">
                         <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-green-500 transition-colors" viewBox="0 0 24 24">

@@ -23,6 +23,7 @@ class QuestionCreate(BaseModel):
 class AnswerCreate(BaseModel):
     question_id: int
     answer_text: str
+    reply_to_id: Optional[int] = None
     email: Optional[EmailStr] = None
     context: Optional[dict] = None
     media_url: Optional[str] = None

@@ -114,6 +114,7 @@ class Answer(Base):
     id = Column(Integer, primary_key=True)
     question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    reply_to_id = Column(Integer, ForeignKey("answers.id"), nullable=True)
     answer_text = Column(Text, nullable=False)
     context = Column(JSONB, default=dict)
     media_url = Column(String(255))
@@ -121,6 +122,11 @@ class Answer(Base):
 
     question = relationship("Question", back_populates="answers")
     author = relationship("User", back_populates="answers")
+    replies = relationship(
+        "Answer",
+        primaryjoin="Answer.reply_to_id == Answer.id",
+        foreign_keys="Answer.reply_to_id",
+    )
 
 
 class Reaction(Base):

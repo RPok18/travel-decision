@@ -3,16 +3,19 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 
 import Layout from "../../components/Layout";
-import VoteButton from "../../components/VoteButton";
 import CommentCard from "../../components/CommentCard";
 import TimeAgo from "../../components/TimeAgo";
 import { fetcher } from "../../lib/api-client";
+import { useAuth } from "../../components/AuthContext";
+import Link from "next/link";
 
-interface Answer {
+interface AnswerItem {
   id: number;
   answer_text: string;
   context: Record<string, string>;
   created_at?: string;
+  reply_to_id?: number | null;
+  like_count?: number;
 }
 
 interface QuestionDetail {
@@ -26,15 +29,13 @@ interface QuestionDetail {
     status: string;
     created_at?: string;
   };
-  answers: Answer[];
+  question_like_count?: number;
+  answers: AnswerItem[];
 }
 
 interface QuestionPageProps {
   data: QuestionDetail;
 }
-
-import { useAuth } from "../../components/AuthContext";
-import Link from "next/link";
 
 export default function QuestionPage({ data }: QuestionPageProps) {
   const router = useRouter();
@@ -42,9 +43,50 @@ export default function QuestionPage({ data }: QuestionPageProps) {
   const [error, setError] = useState<string | null>(null);
   const { isGuest, user } = useAuth();
 
+  // Question-level like state
+  const [questionLiked, setQuestionLiked] = useState(false);
+  const [questionLikes, setQuestionLikes] = useState(data.question_like_count ?? 0);
+  const [isLikingQuestion, setIsLikingQuestion] = useState(false);
+
   const isAuthor = user && user.id === data.question.author_id;
   const isAdmin = user && user.isAdmin;
   const canDelete = isAuthor || isAdmin;
+
+  const handleLikeQuestion = async () => {
+    if (isGuest || isLikingQuestion) return;
+    setIsLikingQuestion(true);
+    const wasLiked = questionLiked;
+    setQuestionLiked(!wasLiked);
+    setQuestionLikes((prev) => (wasLiked ? prev - 1 : prev + 1));
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/react", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          entity_type: "question",
+          entity_id: data.question.id,
+          reaction_type: "thanks",
+        }),
+      });
+      if (!res.ok) {
+        setQuestionLiked(wasLiked);
+        setQuestionLikes((prev) => (wasLiked ? prev + 1 : prev - 1));
+      } else {
+        const responseData = await res.json();
+        setQuestionLiked(responseData.liked);
+      }
+    } catch {
+      setQuestionLiked(wasLiked);
+      setQuestionLikes((prev) => (wasLiked ? prev + 1 : prev - 1));
+    } finally {
+      setIsLikingQuestion(false);
+    }
+  };
 
   const handleDeleteThread = async () => {
     if (!window.confirm("Are you sure you want to delete this thread? This action cannot be undone.")) return;
@@ -55,13 +97,12 @@ export default function QuestionPage({ data }: QuestionPageProps) {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : ""
+          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify({ question_id: data.question.id }),
       });
 
       if (!res.ok) throw new Error(await res.text());
-
       router.push("/");
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -87,7 +128,7 @@ export default function QuestionPage({ data }: QuestionPageProps) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : ""
+          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify(body),
       });
@@ -104,6 +145,17 @@ export default function QuestionPage({ data }: QuestionPageProps) {
     }
   };
 
+  // Separate top-level answers from replies
+  const topLevelAnswers = data.answers.filter((a) => !a.reply_to_id);
+  const repliesMap: Record<number, AnswerItem[]> = {};
+  data.answers
+    .filter((a) => a.reply_to_id)
+    .forEach((a) => {
+      const parentId = a.reply_to_id!;
+      if (!repliesMap[parentId]) repliesMap[parentId] = [];
+      repliesMap[parentId].push(a);
+    });
+
   return (
     <Layout>
       {/* ── Question Header (Post style) ─────────────────────── */}
@@ -118,9 +170,7 @@ export default function QuestionPage({ data }: QuestionPageProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-ink dark:text-white text-sm">
-                  traveler
-                </span>
+                <span className="font-bold text-ink dark:text-white text-sm">traveler</span>
                 <span className="text-muted-dark text-xs">•</span>
                 <span className="text-muted-dark text-xs">
                   <TimeAgo date={data.question.created_at} />
@@ -182,15 +232,39 @@ export default function QuestionPage({ data }: QuestionPageProps) {
 
         {/* Interaction Row */}
         <div className="flex items-center gap-8 border-t border-border-light dark:border-border-dark pt-4">
-          <div className={`flex items-center gap-2 group ${isGuest ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-            <div className={`p-2 rounded-full ${isGuest ? '' : 'group-hover:bg-red-500/10'} transition-colors`}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-red-500 transition-colors" viewBox="0 0 24 24">
+          {/* Like button */}
+          <button
+            id="like-question-btn"
+            onClick={handleLikeQuestion}
+            disabled={isGuest || isLikingQuestion}
+            className={`flex items-center gap-2 group transition-all ${isGuest ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+              }`}
+          >
+            <div
+              className={`p-2 rounded-full transition-colors ${questionLiked ? "bg-red-500/10" : isGuest ? "" : "group-hover:bg-red-500/10"
+                }`}
+            >
+              <svg
+                width="20"
+                height="20"
+                fill={questionLiked ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="2"
+                className={`transition-colors ${questionLiked ? "text-red-500" : "text-muted-dark group-hover:text-red-500"}`}
+                viewBox="0 0 24 24"
+              >
                 <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <span className="text-sm font-medium text-muted-dark group-hover:text-red-500 transition-colors">12</span>
-          </div>
+            <span
+              className={`text-sm font-medium transition-colors ${questionLiked ? "text-red-500" : "text-muted-dark group-hover:text-red-500"
+                }`}
+            >
+              {questionLikes}
+            </span>
+          </button>
 
+          {/* Comment count */}
           <div className="flex items-center gap-2 group">
             <div className="p-2 rounded-full group-hover:bg-accent-blue/10 transition-colors">
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-accent-blue transition-colors" viewBox="0 0 24 24">
@@ -200,6 +274,7 @@ export default function QuestionPage({ data }: QuestionPageProps) {
             <span className="text-sm font-medium text-muted-dark group-hover:text-accent-blue transition-colors">{data.answers.length}</span>
           </div>
 
+          {/* Share */}
           <div className="flex items-center gap-2 group cursor-pointer">
             <div className="p-2 rounded-full group-hover:bg-green-500/10 transition-colors">
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-green-500 transition-colors" viewBox="0 0 24 24">
@@ -211,22 +286,16 @@ export default function QuestionPage({ data }: QuestionPageProps) {
         </div>
       </div>
 
-      {/* ── Reply box (TravelThreads style) ─────────────────────────── */}
+      {/* ── Reply box ──────────────────────────────────────────────── */}
       {isGuest ? (
         <div className="rounded-3xl border border-dashed border-border-dark bg-card-dark/50 p-8 mb-8 text-center">
           <h3 className="text-lg font-bold text-white mb-2">Want to share a lifehack?</h3>
           <p className="text-sm text-muted-dark mb-6">Only registered members can share their travel secrets.</p>
           <div className="flex justify-center gap-4">
-            <Link
-              href="/login"
-              className="px-8 py-2 rounded-full bg-hover-dark text-sm font-bold text-white hover:bg-border-dark transition-all"
-            >
+            <Link href="/login" className="px-8 py-2 rounded-full bg-hover-dark text-sm font-bold text-white hover:bg-border-dark transition-all">
               Log In
             </Link>
-            <Link
-              href="/login"
-              className="px-8 py-2 rounded-full bg-accent-blue text-sm font-bold text-white hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20"
-            >
+            <Link href="/login" className="px-8 py-2 rounded-full bg-accent-blue text-sm font-bold text-white hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20">
               Sign Up Now
             </Link>
           </div>
@@ -255,16 +324,14 @@ export default function QuestionPage({ data }: QuestionPageProps) {
 
                 <div className="flex items-center justify-between pt-2">
                   <div className="text-[10px] text-muted-dark space-y-1">
-                    <p>0/280</p>
                     <p className="opacity-60">Enter sends, Shift+Enter newline</p>
                   </div>
 
                   <button
                     type="submit"
+                    id="submit-answer-btn"
                     disabled={isSubmitting}
-                    className={`rounded-full bg-accent-blue px-8 py-2 text-sm font-bold text-white transition-all shadow-md shadow-accent-blue/20 ${isSubmitting
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:brightness-110 active:scale-95"
+                    className={`rounded-full bg-accent-blue px-8 py-2 text-sm font-bold text-white transition-all shadow-md shadow-accent-blue/20 ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:brightness-110 active:scale-95"
                       }`}
                   >
                     {isSubmitting ? "Posting..." : "Post"}
@@ -273,31 +340,43 @@ export default function QuestionPage({ data }: QuestionPageProps) {
               </div>
             </div>
 
-            {error && (
-              <p className="mt-2 text-xs font-medium text-red-500">{error}</p>
-            )}
+            {error && <p className="mt-2 text-xs font-medium text-red-500">{error}</p>}
           </form>
         </div>
       )}
 
       {/* ── Comments List ────────────────── */}
       <div className="space-y-4">
-        {data.answers.length === 0 ? (
+        {topLevelAnswers.length === 0 ? (
           <div className="rounded-3xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-12 text-center">
-            <p className="text-sm text-muted-dark">
-              No comments yet. Share your experience!
-            </p>
+            <p className="text-sm text-muted-dark">No comments yet. Share your experience!</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {data.answers.map((answer) => (
-              <CommentCard
-                key={answer.id}
-                id={answer.id}
-                text={answer.answer_text}
-                context={answer.context}
-                createdAt={answer.created_at}
-              />
+            {topLevelAnswers.map((answer) => (
+              <div key={answer.id}>
+                <CommentCard
+                  id={answer.id}
+                  questionId={data.question.id}
+                  text={answer.answer_text}
+                  context={answer.context}
+                  createdAt={answer.created_at}
+                  likeCount={answer.like_count ?? 0}
+                />
+                {/* Nested replies */}
+                {repliesMap[answer.id]?.map((reply) => (
+                  <CommentCard
+                    key={reply.id}
+                    id={reply.id}
+                    questionId={data.question.id}
+                    text={reply.answer_text}
+                    context={reply.context}
+                    createdAt={reply.created_at}
+                    likeCount={reply.like_count ?? 0}
+                    isNested
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}
