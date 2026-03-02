@@ -206,27 +206,25 @@ export default function CommentCard({
                     </button>
 
                     {/* Reply button */}
-                    {!isNested && (
-                        <button
-                            id={`reply-comment-${id}`}
-                            onClick={() => {
-                                if (isGuest) return;
-                                setShowReply((v) => !v);
-                            }}
-                            className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isGuest
-                                ? "text-muted-dark opacity-50 cursor-not-allowed"
-                                : showReply
-                                    ? "text-accent-blue"
-                                    : "text-muted-dark hover:text-accent-blue"
-                                }`}
-                            title={isGuest ? "Log in to reply" : "Reply"}
-                        >
-                            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            Reply
-                        </button>
-                    )}
+                    <button
+                        id={`reply-comment-${id}`}
+                        onClick={() => {
+                            if (isGuest) return;
+                            setShowReply((v) => !v);
+                        }}
+                        className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isGuest
+                            ? "text-muted-dark opacity-50 cursor-not-allowed"
+                            : showReply
+                                ? "text-accent-blue"
+                                : "text-muted-dark hover:text-accent-blue"
+                            }`}
+                        title={isGuest ? "Log in to reply" : "Reply"}
+                    >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Reply
+                    </button>
 
                     {/* Share */}
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-muted-dark hover:text-white transition-colors">
