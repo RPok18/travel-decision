@@ -21,5 +21,25 @@ export const fetcher = async <T>(path: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+export const uploadFile = async (file: File): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = localStorage.getItem("access_token");
+  const response = await fetch(`${API_URL}/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 
 

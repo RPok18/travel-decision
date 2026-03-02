@@ -3,11 +3,14 @@ import random
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import shutil
+import uuid
+import os
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.api.deps import get_admin_user, get_current_user, get_db
+from app.api.deps import get_admin_user, get_current_user, get_db, get_optional_user
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.models.enums import (
@@ -48,6 +51,29 @@ logger = logging.getLogger("travel_decision")
 router = APIRouter()
 
 
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    # Simple validation for media files
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "video/mp4", "video/quicktime"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="File type not supported")
+
+    # Generate unique filename
+    ext = os.path.splitext(file.filename)[1]
+    filename = f"{uuid.uuid4()}{ext}"
+    
+    # Path to app/main.py's UPLOAD_DIR
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+        
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"url": f"/uploads/{filename}"}
+
 @router.get("/health")
 def health_check():
     return {"status": "ok"}
@@ -79,7 +105,7 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
             Question.question_text,
             Question.created_at,
             User.id.label("author_id"),
-            User.email.label("author_name"),
+            func.coalesce(User.username, User.email).label("author_display_name"),
             last_answer_sq.c.last_message_at,
             answer_count_sq.c.answer_count,
         )
@@ -117,7 +143,7 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
                 "title": text[:80] + ("…" if len(text) > 80 else ""),
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "last_message_at": r.last_message_at.isoformat() if r.last_message_at else None,
-                "author": {"id": r.author_id, "display_name": r.author_name},
+                "author": {"id": r.author_id, "display_name": r.author_display_name},
                 "answer_count": r.answer_count or 0,
                 "like_count": like_counts.get(r.id, 0),
             }
@@ -127,25 +153,35 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
 
 
 @router.post("/feed")
-def create_feed_thread(payload: dict, db: Session = Depends(get_db)):
+def create_feed_thread(
+    payload: dict,
+    db: Session = Depends(get_db),
+    optional_user: Optional[User] = Depends(get_optional_user),
+):
     """
-    MVP: создаем публичный тред без авторизации.
-    Чтобы не заморачиваться с OTP на фронте.
+    MVP: создаем публичный тред.
+    Supports media and authenticated users.
     """
     text = (payload.get("question_text") or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="question_text is required")
 
-    # 1) гарантируем что есть юзер "member@travel.dev"
-    user = db.query(User).filter(User.email == "member@travel.dev").first()
+    media_url = payload.get("media_url")
+
+    # 1) Resolve user
+    user = optional_user
     if not user:
-        user = User(email="member@travel.dev")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        if not db.query(UserProfile).filter(UserProfile.user_id == user.id).first():
-            db.add(UserProfile(user_id=user.id, cities_of_experience=[]))
+        # Fallback to email from payload or default MVP user
+        email = payload.get("email") or "member@travel.dev"
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(email=email)
+            db.add(user)
             db.commit()
+            db.refresh(user)
+            if not db.query(UserProfile).filter(UserProfile.user_id == user.id).first():
+                db.add(UserProfile(user_id=user.id, cities_of_experience=[]))
+                db.commit()
 
     # 2) гарантируем что есть city + topic для MVP
     city = db.query(City).first()
@@ -170,6 +206,7 @@ def create_feed_thread(payload: dict, db: Session = Depends(get_db)):
         budget_tier=BudgetTier.mid,
         requirements=[],
         question_text=text,
+        media_url=media_url,
         status=QuestionStatus.open,
         created_at=datetime.utcnow(),
     )
@@ -279,6 +316,7 @@ def create_question(
         budget_tier=BudgetTier(payload.budget_tier),
         requirements=payload.requirements,
         question_text=payload.question_text,
+        media_url=payload.media_url,
     )
     db.add(question)
     db.commit()
@@ -378,10 +416,14 @@ def get_question(question_id: int, db: Session = Depends(get_db)):
     def answer_to_dict(answer):
         base = AnswerBase.model_validate(answer).model_dump()
         base["like_count"] = like_counts.get(answer.id, 0)
+        base["author_username"] = answer.author.username or answer.author.email.split("@")[0]
         return base
 
+    q_base = QuestionBase.model_validate(question).model_dump()
+    q_base["author_username"] = question.author.username or question.author.email.split("@")[0]
+
     return {
-        "question": QuestionBase.model_validate(question),
+        "question": q_base,
         "question_like_count": question_like_count,
         "answers": [answer_to_dict(a) for a in answers_sorted],
     }
@@ -391,20 +433,22 @@ def get_question(question_id: int, db: Session = Depends(get_db)):
 def create_answer(
     payload: AnswerCreate,
     db: Session = Depends(get_db),
-    # current_user is removed to allow unauthenticated access
+    optional_user: Optional[User] = Depends(get_optional_user),
 ):
-    # Resolve user
-    email = payload.email or "member@travel.dev"
-    user = db.query(User).filter(User.email == email).first()
+    # Resolve user: use authenticated user if present, else payload.email, else "member@travel.dev"
+    user = optional_user
     if not user:
-        user = User(email=email)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        # Ensure profile exists
-        if not db.query(UserProfile).filter(UserProfile.user_id == user.id).first():
-            db.add(UserProfile(user_id=user.id, cities_of_experience=[]))
+        email = payload.email or "member@travel.dev"
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(email=email)
+            db.add(user)
             db.commit()
+            db.refresh(user)
+            # Ensure profile exists
+            if not db.query(UserProfile).filter(UserProfile.user_id == user.id).first():
+                db.add(UserProfile(user_id=user.id, cities_of_experience=[]))
+                db.commit()
 
     question = db.query(Question).filter(Question.id == payload.question_id).first()
     if not question:
@@ -682,20 +726,42 @@ def get_profile(
     )
     saved_cards = (
         db.query(Reaction)
-        .filter(Reaction.reaction_type == ReactionType.saved, Reaction.entity_type == EntityType.card)
+        .filter(Reaction.user_id == current_user.id, Reaction.reaction_type == ReactionType.saved, Reaction.entity_type == EntityType.card)
         .all()
     )
+    
+    # Fetch liked questions
+    liked_questions = (
+        db.query(Question)
+        .join(Reaction, Reaction.entity_id == Question.id)
+        .filter(
+            Reaction.user_id == current_user.id,
+            Reaction.entity_type == EntityType.question,
+            Reaction.reaction_type == ReactionType.thanks
+        )
+        .all()
+    )
+
+    def question_to_dict(q):
+        base = QuestionBase.model_validate(q).model_dump()
+        base["author_username"] = q.author.username or q.author.email.split("@")[0]
+        # Get answer count for PostCard
+        base["answer_count"] = len(q.answers)
+        return base
+
     questions = db.query(Question).filter(Question.author_id == current_user.id).all()
     answers = db.query(Answer).filter(Answer.user_id == current_user.id).all()
     return {
         "profile": profile,
+        "username": current_user.username or current_user.email.split("@")[0],
         "stats": {
             "helped_answers": helped_count,
             "cards_used": cards_used,
             "answer_saves": saves_count,
         },
         "saved_cards": saved_cards,
-        "questions": questions,
+        "liked_questions": [question_to_dict(q) for q in liked_questions],
+        "questions": [question_to_dict(q) for q in questions],
         "answers": answers,
     }
 
@@ -711,8 +777,13 @@ def update_profile(
         profile = UserProfile(user_id=current_user.id, cities_of_experience=[])
         db.add(profile)
     update_data = payload.model_dump(exclude_unset=True)
+    if "username" in update_data:
+        current_user.username = update_data.pop("username")
+    
     for key, value in update_data.items():
-        setattr(profile, key, value)
+        if hasattr(profile, key):
+            setattr(profile, key, value)
+            
     db.commit()
     logger.info("Profile updated %s", current_user.id)
     return {"status": "ok"}

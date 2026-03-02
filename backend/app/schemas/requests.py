@@ -18,6 +18,7 @@ class QuestionCreate(BaseModel):
     budget_tier: str
     requirements: List[str]
     question_text: str
+    media_url: Optional[str] = None
 
 
 class AnswerCreate(BaseModel):
@@ -51,6 +52,7 @@ class CardUpdate(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
+    username: Optional[str] = None
     language: Optional[str] = None
     travel_style: Optional[str] = None
     budget_tier: Optional[str] = None

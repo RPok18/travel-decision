@@ -21,6 +21,7 @@ class TopicBase(BaseModel):
 class UserBase(BaseModel):
     id: int
     email: str
+    username: Optional[str] = None
     is_admin: bool
 
     model_config = ConfigDict(from_attributes=True)
@@ -44,6 +45,8 @@ class QuestionBase(BaseModel):
     budget_tier: str
     requirements: List[str]
     question_text: str
+    media_url: Optional[str] = None
+    author_username: Optional[str] = None
     status: str
     created_at: datetime
 
@@ -58,6 +61,7 @@ class AnswerBase(BaseModel):
     answer_text: str
     context: dict
     media_url: Optional[str]
+    author_username: Optional[str] = None
     created_at: datetime
     like_count: int = 0
 

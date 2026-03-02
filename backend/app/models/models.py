@@ -40,6 +40,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(50), unique=True, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -96,6 +97,7 @@ class Question(Base):
     )
     requirements = Column(JSONB, default=list)
     question_text = Column(Text, nullable=False)
+    media_url = Column(String(255), nullable=True)
     status = Column(
         Enum(QuestionStatus, values_callable=enum_values),
         default=QuestionStatus.open,

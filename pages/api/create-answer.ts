@@ -4,7 +4,7 @@ import { API_URL } from "../../lib/api-client";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    const { question_id, answer_text, reply_to_id } = req.body;
+    const { question_id, answer_text, reply_to_id, media_url } = req.body;
     const authHeader = req.headers.authorization;
 
     if (!question_id || !answer_text) {
@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             body: JSON.stringify({
                 question_id: Number(question_id),
                 answer_text,
+                media_url,
                 ...(reply_to_id != null ? { reply_to_id: Number(reply_to_id) } : {}),
             }),
         });

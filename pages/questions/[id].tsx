@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import CommentCard from "../../components/CommentCard";
 import TimeAgo from "../../components/TimeAgo";
-import { fetcher } from "../../lib/api-client";
+import { fetcher, uploadFile } from "../../lib/api-client";
 import { useAuth } from "../../components/AuthContext";
 import Link from "next/link";
 
@@ -16,6 +16,8 @@ interface AnswerItem {
   created_at?: string;
   reply_to_id?: number | null;
   like_count?: number;
+  media_url?: string | null;
+  author_username?: string;
 }
 
 interface QuestionDetail {
@@ -28,6 +30,8 @@ interface QuestionDetail {
     requirements: string[];
     status: string;
     created_at?: string;
+    media_url?: string | null;
+    author_username?: string;
   };
   question_like_count?: number;
   answers: AnswerItem[];
@@ -41,6 +45,8 @@ export default function QuestionPage({ data }: QuestionPageProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const { isGuest, user } = useAuth();
 
   // Question-level like state
@@ -124,17 +130,25 @@ export default function QuestionPage({ data }: QuestionPageProps) {
     const token = localStorage.getItem("access_token");
 
     try {
+      let media_url = null;
+      if (selectedFile) {
+        const uploadRes = await uploadFile(selectedFile);
+        media_url = uploadRes.url;
+      }
+
       const res = await fetch("/api/create-answer", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, media_url }),
       });
 
       if (!res.ok) throw new Error(await res.text());
 
+      setSelectedFile(null);
+      setMediaPreview(null);
       router.replace(router.asPath);
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
@@ -170,7 +184,9 @@ export default function QuestionPage({ data }: QuestionPageProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-ink dark:text-white text-sm">traveler</span>
+                <span className="font-bold text-ink dark:text-white text-sm">
+                  u/{data.question.author_username || "traveler"}
+                </span>
                 <span className="text-muted-dark text-xs">•</span>
                 <span className="text-muted-dark text-xs">
                   <TimeAgo date={data.question.created_at} />
@@ -204,10 +220,19 @@ export default function QuestionPage({ data }: QuestionPageProps) {
           </div>
         </div>
 
-        {/* Title */}
         <h1 className="text-2xl font-bold text-ink dark:text-gray-100 leading-tight mb-4">
           {data.question.question_text}
         </h1>
+
+        {data.question.media_url && (
+          <div className="mb-6 rounded-3xl overflow-hidden border border-border-light dark:border-border-dark bg-black/5">
+            {data.question.media_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+              <video src={data.question.media_url} controls className="w-full max-h-[500px] object-contain" />
+            ) : (
+              <img src={data.question.media_url} alt="Question media" className="w-full max-h-[600px] object-contain" />
+            )}
+          </div>
+        )}
 
         {/* Tags / Flair */}
         <div className="flex flex-wrap gap-2 mb-6">
@@ -322,9 +347,46 @@ export default function QuestionPage({ data }: QuestionPageProps) {
                   className="w-full rounded-xl border border-border-light dark:border-border-dark bg-transparent px-4 py-3 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 outline-none transition-all resize-none"
                 />
 
+                {mediaPreview && (
+                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border-dark group">
+                    {selectedFile?.type.startsWith("video/") ? (
+                      <video src={mediaPreview} className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={mediaPreview} className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      onClick={() => { setSelectedFile(null); setMediaPreview(null); }}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between pt-2">
-                  <div className="text-[10px] text-muted-dark space-y-1">
-                    <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer p-2 rounded-full hover:bg-hover-dark text-muted-dark transition-colors" title="Add media">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSelectedFile(file);
+                            setMediaPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </label>
+                    <div className="text-[10px] text-muted-dark space-y-1">
+                      <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                    </div>
                   </div>
 
                   <button
@@ -353,31 +415,28 @@ export default function QuestionPage({ data }: QuestionPageProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {topLevelAnswers.map((answer) => (
-              <div key={answer.id}>
-                <CommentCard
-                  id={answer.id}
-                  questionId={data.question.id}
-                  text={answer.answer_text}
-                  context={answer.context}
-                  createdAt={answer.created_at}
-                  likeCount={answer.like_count ?? 0}
-                />
-                {/* Nested replies */}
-                {repliesMap[answer.id]?.map((reply) => (
+            {(() => {
+              const renderTree = (parentId: number | null) => {
+                const answers = data.answers.filter(a => a.reply_to_id === parentId);
+                return answers.map(answer => (
                   <CommentCard
-                    key={reply.id}
-                    id={reply.id}
+                    key={answer.id}
+                    id={answer.id}
                     questionId={data.question.id}
-                    text={reply.answer_text}
-                    context={reply.context}
-                    createdAt={reply.created_at}
-                    likeCount={reply.like_count ?? 0}
-                    isNested
-                  />
-                ))}
-              </div>
-            ))}
+                    authorName={answer.author_username || "Anonymous"}
+                    text={answer.answer_text}
+                    context={answer.context}
+                    createdAt={answer.created_at}
+                    likeCount={answer.like_count ?? 0}
+                    mediaUrl={answer.media_url}
+                    isNested={!!parentId}
+                  >
+                    {renderTree(answer.id)}
+                  </CommentCard>
+                ));
+              };
+              return renderTree(null);
+            })()}
           </div>
         )}
       </div>

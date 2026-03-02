@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import PostCard from "../components/PostCard";
-import { fetcher } from "../lib/api-client";
+import { fetcher, uploadFile } from "../lib/api-client";
 
 type FeedItem = {
   id: number;
@@ -15,6 +15,7 @@ type FeedItem = {
   answer_count?: number;
   vote_score?: number;
   like_count?: number;
+  media_url?: string | null;
 };
 
 type FeedProps = {
@@ -28,6 +29,8 @@ export default function Home({ items }: FeedProps) {
   const [sort, setSort] = useState<"latest" | "hot">("latest");
   const { isGuest } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,17 +42,25 @@ export default function Home({ items }: FeedProps) {
     const token = localStorage.getItem("access_token");
 
     try {
+      let media_url = null;
+      if (selectedFile) {
+        const uploadRes = await uploadFile(selectedFile);
+        media_url = uploadRes.url;
+      }
+
       const res = await fetch("/api/create-thread", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ question_text }),
+        body: JSON.stringify({ question_text, media_url }),
       });
 
       if (!res.ok) throw new Error(await res.text());
 
+      setSelectedFile(null);
+      setMediaPreview(null);
       router.replace(router.asPath);
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
@@ -140,10 +151,48 @@ export default function Home({ items }: FeedProps) {
                   className="w-full rounded-xl border border-border-light dark:border-border-dark bg-transparent px-4 py-3 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 outline-none transition-all resize-none"
                 />
 
+                {mediaPreview && (
+                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border-dark group">
+                    {selectedFile?.type.startsWith("video/") ? (
+                      <video src={mediaPreview} className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={mediaPreview} className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedFile(null); setMediaPreview(null); }}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between pt-2">
-                  <div className="text-[10px] text-muted-dark space-y-1">
-                    <p>0/280</p>
-                    <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer p-2 rounded-full hover:bg-hover-dark text-muted-dark transition-colors" title="Add media">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSelectedFile(file);
+                            setMediaPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </label>
+                    <div className="text-[10px] text-muted-dark space-y-1">
+                      <p>0/280</p>
+                      <p className="opacity-60">Enter sends, Shift+Enter newline</p>
+                    </div>
                   </div>
 
                   <button
@@ -174,6 +223,7 @@ export default function Home({ items }: FeedProps) {
             answerCount={item.answer_count ?? 0}
             voteScore={item.vote_score ?? 0}
             likeCount={item.like_count ?? 0}
+            mediaUrl={item.media_url}
           />
         ))}
 

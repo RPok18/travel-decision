@@ -31,6 +31,17 @@ def get_current_user(db: Session = Depends(get_db), token_auth: HTTPBearer = Dep
     return user
 
 
+def get_optional_user(db: Session = Depends(get_db), token_auth: Optional[HTTPBearer] = Depends(oauth2_scheme)) -> Optional[User]:
+    if not token_auth or not token_auth.credentials:
+        return None
+    try:
+        token = token_auth.credentials
+        email = verify_access_token(token)
+        return db.query(User).filter(User.email == email).first()
+    except Exception:
+        return None
+
+
 def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")

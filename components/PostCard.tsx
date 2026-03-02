@@ -14,6 +14,7 @@ interface PostCardProps {
     answerCount?: number;
     voteScore?: number;
     likeCount?: number;
+    mediaUrl?: string | null;
 }
 
 export default function PostCard({
@@ -26,6 +27,7 @@ export default function PostCard({
     answerCount = 0,
     voteScore = 0,
     likeCount = 0,
+    mediaUrl = null,
 }: PostCardProps) {
     const { user, isGuest } = useAuth();
     const router = useRouter();
@@ -147,6 +149,15 @@ export default function PostCard({
                 <h3 className="text-lg font-medium text-ink dark:text-gray-100 leading-snug mb-4 group-hover:text-accent-blue transition-colors">
                     {title}
                 </h3>
+                {mediaUrl && (
+                    <div className="mb-4 rounded-2xl overflow-hidden border border-border-light dark:border-border-dark bg-black/5">
+                        {mediaUrl.match(/\.(mp4|webm|ogg|mov)$|^data:video/i) ? (
+                            <video src={mediaUrl} controls className="w-full max-h-[400px] object-contain" />
+                        ) : (
+                            <img src={mediaUrl} alt="Post media" className="w-full max-h-[500px] object-contain" />
+                        )}
+                    </div>
+                )}
             </Link>
 
             {/* Interaction Row */}

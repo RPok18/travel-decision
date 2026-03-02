@@ -6,6 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const question_text = String(req.body?.question_text || "").trim();
+  const media_url = req.body?.media_url;
   if (!question_text) return res.status(400).json({ error: "question_text is required" });
 
   const authHeader = req.headers.authorization;
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         "Content-Type": "application/json",
         ...(authHeader ? { "Authorization": authHeader } : {})
       },
-      body: JSON.stringify({ question_text }),
+      body: JSON.stringify({ question_text, media_url }),
     });
 
     if (!r.ok) {
