@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
