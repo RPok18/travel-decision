@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { useTheme } from "./ThemeProvider";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();

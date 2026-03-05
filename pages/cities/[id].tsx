@@ -1,17 +1,9 @@
 import { GetServerSideProps } from "next";
 
-import CardItem from "../../components/CardItem";
-import Layout from "../../components/Layout";
+import CardItem from "../../components/feed/CardItem";
+import Layout from "../../components/layout/Layout";
 import { API_URL } from "../../lib/api-client";
-
-interface Card {
-  id: number;
-  title: string;
-  summary: string;
-  requirements: string[];
-  budget_tier: string;
-  duration: string;
-}
+import { Card } from "../../types";
 
 interface CityPageProps {
   cityName: string;

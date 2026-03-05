@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useAuth } from "../components/AuthContext";
-import Layout from "../components/Layout";
+import { useAuth } from "../components/auth/AuthContext";
+import Layout from "../components/layout/Layout";
 import { API_URL } from "../lib/api-client";
 
 export default function LoginPage() {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import Layout from "../components/Layout";
-import { useAuth } from "../components/AuthContext";
-import PostCard from "../components/PostCard";
+import Layout from "../components/layout/Layout";
+import { useAuth } from "../components/auth/AuthContext";
+import PostCard from "../components/feed/PostCard";
 import { useRouter } from "next/router";
 
 interface ProfileData {
@@ -30,7 +30,7 @@ export default function Profile() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    fetch("/api/profile", {
+    fetch("/api/profile/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

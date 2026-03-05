@@ -1,10 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-
-interface User {
-    id: number;
-    email: string;
-    isAdmin?: boolean;
-}
+import { User } from "../../types";
 
 interface AuthContextType {
     user: User | null;
@@ -26,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const email = localStorage.getItem("user_email");
         const isAdmin = localStorage.getItem("user_is_admin") === "true";
         if (token && userId && email) {
-            setUser({ id: parseInt(userId), email, isAdmin });
+            setUser({ id: parseInt(userId), email, isAdmin, is_admin: isAdmin });
             setIsLoggedIn(true);
         }
     }, []);
@@ -36,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("user_id", userId.toString());
         localStorage.setItem("user_email", email);
         localStorage.setItem("user_is_admin", isAdmin.toString());
-        setUser({ id: userId, email, isAdmin });
+        setUser({ id: userId, email, isAdmin, is_admin: isAdmin });
         setIsLoggedIn(true);
     };
 

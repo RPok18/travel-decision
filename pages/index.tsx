@@ -2,27 +2,16 @@ import { GetServerSideProps } from "next";
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import Layout from "../components/Layout";
-import PostCard from "../components/PostCard";
+import Layout from "../components/layout/Layout";
+import PostCard from "../components/feed/PostCard";
 import { fetcher, uploadFile } from "../lib/api-client";
-
-type FeedItem = {
-  id: number;
-  title: string;
-  created_at: string | null;
-  last_message_at: string | null;
-  author: { id: number; display_name: string };
-  answer_count?: number;
-  vote_score?: number;
-  like_count?: number;
-  media_url?: string | null;
-};
+import { Question } from "../types";
 
 type FeedProps = {
-  items: FeedItem[];
+  items: Question[];
 };
 
-import { useAuth } from "../components/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 
 export default function Home({ items }: FeedProps) {
   const router = useRouter();

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import TimeAgo from "./TimeAgo";
-import { useAuth } from "./AuthContext";
+import TimeAgo from "../ui/TimeAgo";
+import { useAuth } from "../auth/AuthContext";
 import { useRouter } from "next/router";
-import { uploadFile } from "../lib/api-client";
+import { uploadFile } from "../../lib/api-client";
 
 interface CommentCardProps {
     id: number;

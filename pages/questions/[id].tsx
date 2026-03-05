@@ -2,11 +2,11 @@ import { GetServerSideProps } from "next";
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import Layout from "../../components/Layout";
-import CommentCard from "../../components/CommentCard";
-import TimeAgo from "../../components/TimeAgo";
+import Layout from "../../components/layout/Layout";
+import CommentCard from "../../components/feed/CommentCard";
+import TimeAgo from "../../components/ui/TimeAgo";
 import { fetcher, uploadFile } from "../../lib/api-client";
-import { useAuth } from "../../components/AuthContext";
+import { useAuth } from "../../components/auth/AuthContext";
 import Link from "next/link";
 
 interface AnswerItem {

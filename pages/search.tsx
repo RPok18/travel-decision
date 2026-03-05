@@ -1,28 +1,10 @@
 import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 
-import CardItem from "../components/CardItem";
-import Layout from "../components/Layout";
+import CardItem from "../components/feed/CardItem";
+import Layout from "../components/layout/Layout";
 import { fetcher } from "../lib/api-client";
-
-interface Card {
-  id: number;
-  title: string;
-  summary: string;
-  requirements: string[];
-  budget_tier: string;
-  duration: string;
-}
-
-interface City {
-  id: number;
-  name: string;
-}
-
-interface Topic {
-  id: number;
-  name: string;
-}
+import { Card, City, Topic } from "../types";
 
 interface SearchProps {
   cards: Card[];
@@ -30,7 +12,7 @@ interface SearchProps {
   topics: Topic[];
 }
 
-import { useAuth } from "../components/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 
 export default function Search({ cards, cities, topics }: SearchProps) {
   const router = useRouter();

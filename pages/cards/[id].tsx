@@ -1,23 +1,12 @@
 import { GetServerSideProps } from "next";
 import Link from "next/link";
 
-import Layout from "../../components/Layout";
+import Layout from "../../components/layout/Layout";
 import { API_URL } from "../../lib/api-client";
-
-interface CardDetail {
-  id: number;
-  title: string;
-  summary: string;
-  recommendations: string[];
-  risks: string[];
-  fit_for: string[];
-  duration: string;
-  budget_tier: string;
-  requirements: string[];
-}
+import { Card } from "../../types";
 
 interface CardPageProps {
-  card: CardDetail;
+  card: Card;
 }
 
 export default function CardPage({ card }: CardPageProps) {
