@@ -230,7 +230,7 @@ export default function Home({ items }: FeedProps) {
 
 export const getServerSideProps: GetServerSideProps = async () => {
   try {
-    const data = await fetcher<{ items: FeedItem[] }>("/feed");
+    const data = await fetcher<{ items: Question[] }>("/feed");
     return { props: { items: data.items ?? [] } };
   } catch (e: any) {
     console.error("Feed fetch failed:", e);
