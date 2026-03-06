@@ -205,8 +205,8 @@ export default function Home({ items }: FeedProps) {
             key={item.id}
             id={item.id}
             title={item.title}
-            authorName={item.author.display_name}
-            authorId={item.author.id}
+            authorName={item.author?.display_name ?? "Unknown"}
+            authorId={item.author?.id ?? 0}
             createdAt={item.created_at}
             lastMessageAt={item.last_message_at}
             answerCount={item.answer_count ?? 0}
