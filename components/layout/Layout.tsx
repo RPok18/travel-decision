@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { useRouter } from "next/router";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { isLoggedIn, isGuest, logout } = useAuth();
+  const router = useRouter();
+  const [searchVal, setSearchVal] = useState("");
 
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark transition-colors duration-200">
@@ -35,7 +38,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               </svg>
               <input
                 type="text"
-                placeholder={isGuest ? "Search restricted for guests..." : "Search posts (city, wifi, price...)"}
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchVal.trim()) {
+                    router.push(`/search?q=${encodeURIComponent(searchVal.trim())}`);
+                  }
+                }}
+                placeholder={isGuest ? "Search restricted for guests..." : "Search posts, cities..."}
                 className="w-full rounded-2xl border-none bg-hover-light dark:bg-hover-dark pl-11 pr-4 py-2.5 text-sm text-ink dark:text-gray-200 placeholder:text-muted-dark focus:ring-1 focus:ring-accent-blue/50 outline-none transition-all"
               />
               {isGuest && (
@@ -57,6 +67,15 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </svg>
               </div>
               <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Home</span>
+            </Link>
+
+            <Link href="/plan" className="flex flex-col items-center gap-1 group">
+              <div className="p-1 rounded-lg group-hover:bg-hover-dark transition-colors text-muted-dark group-hover:text-white">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium text-muted-dark group-hover:text-white transition-colors">Plan</span>
             </Link>
 
             <Link href="/communities" className="flex flex-col items-center gap-1 group">

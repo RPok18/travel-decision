@@ -14,7 +14,8 @@ logger = logging.getLogger("travel_decision")
 router = APIRouter()
 
 @router.get("", response_model=dict) # added response_model=dict as hint
-def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
+def get_feed(limit: int = 20, offset: int = 0, q: Optional[str] = None, db: Session = Depends(get_db)):
+
     # Берем вопросы (это наши треды) + дату последнего ответа (как last_message_at)
     last_answer_sq = (
         db.query(
@@ -47,11 +48,20 @@ def get_feed(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
         .join(User, User.id == Question.author_id)
         .outerjoin(last_answer_sq, last_answer_sq.c.question_id == Question.id)
         .outerjoin(answer_count_sq, answer_count_sq.c.question_id == Question.id)
+    )
+
+    if q:
+        search = f"%{q.lower()}%"
+        rows = rows.filter(func.lower(Question.question_text).like(search))
+
+    rows = (
+        rows
         .order_by(func.coalesce(last_answer_sq.c.last_message_at, Question.created_at).desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
+
 
     # Fetch like counts for all retrieved question ids
     question_ids = [r.id for r in rows]

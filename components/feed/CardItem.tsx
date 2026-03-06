@@ -7,6 +7,7 @@ interface CardItemProps {
   requirements: string[];
   budgetTier: string;
   duration: string;
+  cityName?: string;
 }
 
 export default function CardItem({
@@ -16,21 +17,32 @@ export default function CardItem({
   requirements,
   budgetTier,
   duration,
+  cityName,
 }: CardItemProps) {
   return (
     <Link
       href={`/cards/${id}`}
-      className="block rounded-md border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-4 transition-colors hover:border-accent"
+      className="block rounded-2xl border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-5 transition-all hover:border-accent-blue hover:shadow-lg"
     >
-      <div className="flex items-start justify-between">
-        <h3 className="text-base font-bold text-ink dark:text-gray-100">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <h3 className="text-base font-bold text-ink dark:text-gray-100 leading-snug">
           {title}
         </h3>
-        <span className="rounded-full bg-accent/10 text-accent px-2.5 py-0.5 text-xs font-bold">
+        <span className="shrink-0 rounded-full bg-accent/10 text-accent px-2.5 py-0.5 text-xs font-bold capitalize">
           {budgetTier}
         </span>
       </div>
-      <p className="mt-2 text-sm text-muted-light dark:text-muted-dark leading-relaxed">
+
+      {cityName && (
+        <div className="flex items-center gap-1 mb-3">
+          <svg width="13" height="13" fill="currentColor" className="text-accent-blue" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+          </svg>
+          <span className="text-xs font-semibold text-accent-blue">{cityName}</span>
+        </div>
+      )}
+
+      <p className="mt-1 text-sm text-muted-light dark:text-muted-dark leading-relaxed line-clamp-2">
         {summary}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
