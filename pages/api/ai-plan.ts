@@ -52,7 +52,7 @@ export default async function handler(
 
     try {
         const provider = process.env.AI_PROVIDER || (process.env.OPENROUTER_API_KEY ? "openrouter" : "gemini");
-        const modelName = process.env.AI_MODEL || (provider === "openrouter" ? "google/gemini-2.0-flash-001" : "gemini-1.5-flash");
+        const modelName = process.env.AI_MODEL || (provider === "openrouter" ? "openai/gpt-oss-20b:free" : "gemini-1.5-flash");
 
         if (provider === "ollama") {
             // Ollama logic (for local development ONLY)
