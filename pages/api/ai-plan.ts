@@ -52,7 +52,7 @@ export default async function handler(
 
     try {
         const provider = process.env.AI_PROVIDER || (process.env.OPENROUTER_API_KEY ? "openrouter" : "gemini");
-        const modelName = process.env.AI_MODEL || (provider === "openrouter" ? "google/gemini-flash-1.5" : "gemini-1.5-flash");
+        const modelName = process.env.AI_MODEL || (provider === "openrouter" ? "google/gemini-2.0-flash-001" : "gemini-1.5-flash");
 
         if (provider === "ollama") {
             // Ollama logic (for local development ONLY)
@@ -112,12 +112,15 @@ export default async function handler(
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[OpenRouter] Request failed with status ${response.status}:`, errorText);
+                console.error(`[OpenRouter] Request failed with status ${response.status}. Model: ${modelName}`);
+                console.error(`[OpenRouter] Error details:`, errorText);
                 try {
                     const errorData = JSON.parse(errorText);
-                    throw new Error(errorData.error?.message || `OpenRouter returned status ${response.status}`);
-                } catch (e) {
-                    throw new Error(`External AI service returned an error (${response.status})`);
+                    const errorMessage = errorData.error?.message || errorData.error?.metadata?.message || `OpenRouter returned status ${response.status}`;
+                    throw new Error(errorMessage);
+                } catch (e: any) {
+                    if (e.message && !e.message.includes("JSON")) throw e;
+                    throw new Error(`External AI service returned an error (${response.status}): ${errorText.slice(0, 100)}`);
                 }
             }
 
