@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `You are TravelAI, an expert travel planning assistant for TravelThreads — a community platform for travel Q&A.
 
@@ -130,8 +131,7 @@ export default async function handler(
             return res.status(200).json({ reply: data.choices[0].message.content });
 
         } else {
-            // Direct Gemini logic (Requires @google/generative-ai)
-            const { GoogleGenerativeAI } = require("@google/generative-ai");
+            // Direct Gemini logic
             if (!process.env.GEMINI_API_KEY) {
                 throw new Error("GEMINI_API_KEY is missing. Please set it or use OpenRouter.");
             }
@@ -142,7 +142,7 @@ export default async function handler(
                 systemInstruction: SYSTEM_PROMPT,
             });
 
-            const history = messages.slice(0, -1).map((m: any) => ({
+            const history = messages.slice(0, -1).map((m) => ({
                 role: m.role,
                 parts: [{ text: m.content }],
             }));
