@@ -11,15 +11,24 @@ export const API_URL = typeof window === "undefined"
   ? (process.env.API_URL || RENDER_API_URL)
   : (process.env.NEXT_PUBLIC_API_URL || fallback);
 
-export const fetcher = async <T>(path: string): Promise<T> => {
+export const fetcher = async <T>(path: string, token?: string): Promise<T> => {
   const url = `${API_URL}${path}`;
   console.log(`[Fetcher] Requesting: ${url}`);
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status} for ${url}`);
   }
   return response.json() as Promise<T>;
 };
+
+// Fetcher that automatically reads auth token from localStorage (client-side only)
+export const authedFetcher = async <T>(path: string): Promise<T> => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  return fetcher<T>(path, token || undefined);
+};
+
 
 export const uploadFile = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
