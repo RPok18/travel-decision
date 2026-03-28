@@ -9,6 +9,12 @@ class Settings:
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
     otp_expire_minutes: int = int(os.getenv("OTP_EXPIRE_MINUTES", "15"))
     environment: str = os.getenv("ENVIRONMENT", "development")
+    
+    # AI Settings
+    ai_provider: str = os.getenv("AI_PROVIDER", "ollama")
+    ai_model: str = os.getenv("AI_MODEL", "llama3")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
     def __post_init__(self):
         # Fix deprecated postgres:// scheme for SQLAlchemy 2.0+

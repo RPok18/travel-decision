@@ -1,10 +1,14 @@
+import json
+import httpx
 import logging
+import os
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, get_admin_user
+from app.api.deps import get_current_user, get_db, get_admin_user, get_optional_user
+from app.core.config import settings
 from app.models.enums import BudgetTier, CardStatus, QuestionStatus
 from app.models.models import Answer, Card, CardSource, Question, User
 from app.schemas.common import CardBase
@@ -13,6 +17,55 @@ from app.schemas.requests import CardUpdate
 logger = logging.getLogger("travel_decision")
 
 router = APIRouter()
+
+async def _get_ai_summary(question: Question, answers: List[Answer]) -> dict:
+    prompt = (
+        f"Create a travel summary card for a {question.duration} trip to {question.city.name} "
+        f"with a {question.budget_tier.value} budget. Topic: {question.topic.name}. "
+        f"Additional requirements: {', '.join(question.requirements) if question.requirements else 'None'}. "
+        f"Community advice: {' '.join([a.answer_text for a in answers]) if answers else 'None'}. "
+        "Return a JSON object with: 'title' (string), 'summary' (string, 2 paragraphs), "
+        "'recommendations' (list of strings), 'risks' (list of strings), 'fit_for' (list of strings)."
+    )
+    
+    provider = settings.ai_provider
+    model = settings.ai_model
+    
+    try:
+        if provider == "ollama":
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{settings.ollama_base_url}/api/generate",
+                    json={
+                        "model": model,
+                        "prompt": prompt,
+                        "format": "json",
+                        "stream": False
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+                return json.loads(data["response"])
+        elif provider == "openrouter":
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}"},
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "response_format": {"type": "json_object"}
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+                return json.loads(data["choices"][0]["message"]["content"])
+        else:
+            # Fallback for now if no LLM configured
+            return _generate_card_from_question(question, answers)
+    except Exception as e:
+        logger.error(f"AI Generation failed: {e}")
+        return _generate_card_from_question(question, answers)
 
 def _generate_card_from_question(question: Question, answers: List[Answer]) -> dict:
     title = f"{question.city.name} — {question.topic.name} for {question.duration}"
@@ -38,7 +91,7 @@ def _generate_card_from_question(question: Question, answers: List[Answer]) -> d
     }
 
 @router.post("/questions/{question_id}/generate-summary", response_model=CardBase)
-def generate_summary(
+async def generate_summary(
     question_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -46,10 +99,11 @@ def generate_summary(
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
-    if question.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only author can generate summary")
+    if question.author_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only author or admin can generate summary")
+
     answers = db.query(Answer).filter(Answer.question_id == question_id).limit(3).all()
-    template = _generate_card_from_question(question, answers)
+    template = await _get_ai_summary(question, answers)
     card = Card(
         title=template["title"],
         city_id=question.city_id,
@@ -101,14 +155,39 @@ def list_cards(
             query = query.filter(Card.requirements.contains(req))
     return query.order_by(Card.updated_at.desc()).all()
 
-@router.get("/cards/{card_id}", response_model=List[CardBase] if False else CardBase) # small fix for type hint if I were using List, but it's CardBase
-def get_card(card_id: int, db: Session = Depends(get_db)):
+@router.get("/cards/{card_id}", response_model=CardBase)
+def get_card(
+    card_id: int, 
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
     card = db.query(Card).filter(Card.id == card_id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
-    if card.status != CardStatus.published:
-        raise HTTPException(status_code=403, detail="Card not published")
-    return card
+    
+    if card.status == CardStatus.published:
+        return card
+
+    # Draft access: allow admins and the source question's author
+    is_admin = current_user and current_user.is_admin
+    if is_admin:
+        return card
+
+    # Check if the current user is the author of the question that generated this card
+    if current_user:
+        source = db.query(CardSource).filter(CardSource.card_id == card_id).first()
+        if source:
+            answer = db.query(Answer).filter(Answer.id == source.answer_id).first()
+            if answer:
+                question = db.query(Question).filter(Question.id == answer.question_id).first()
+                if question and question.author_id == current_user.id:
+                    return card
+
+    raise HTTPException(status_code=403, detail="Card not published")
+
+
+
+
 
 @router.put("/cards/{card_id}", response_model=CardBase)
 def update_card(

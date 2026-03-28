@@ -54,6 +54,9 @@ export default function QuestionPage({ data }: QuestionPageProps) {
   const [questionLikes, setQuestionLikes] = useState(data.question_like_count ?? 0);
   const [isLikingQuestion, setIsLikingQuestion] = useState(false);
 
+  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
   const isAuthor = user && user.id === data.question.author_id;
   const isAdmin = user && user.isAdmin;
   const canDelete = isAuthor || isAdmin;
@@ -156,6 +159,31 @@ export default function QuestionPage({ data }: QuestionPageProps) {
       setError(err.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (isGuest || !isAuthor || isGeneratingCard) return;
+    setIsGeneratingCard(true);
+    setGenerationError(null);
+    const token = localStorage.getItem("access_token");
+    try {
+      const res = await fetch(`/api/questions/${data.question.id}/generate-summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const card = await res.json();
+      // On success, redirect to the card (it will be visible for the owner/admin or after publish)
+      router.push(`/cards/${card.id}`);
+    } catch (err: any) {
+      console.error("Generation error:", err);
+      setGenerationError(err.message || "Failed to generate summary");
+    } finally {
+      setIsGeneratingCard(false);
     }
   };
 
@@ -320,14 +348,40 @@ export default function QuestionPage({ data }: QuestionPageProps) {
 
           {/* Share */}
           <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="p-2 rounded-full group-hover:bg-green-500/10 transition-colors">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-dark group-hover:text-green-500 transition-colors" viewBox="0 0 24 24">
-                <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-            </div>
-            <span className="text-sm font-medium text-muted-dark group-hover:text-green-500 transition-colors">Share</span>
+            <span className="text-sm font-medium text-green-500 group-hover:text-green-500 transition-all">Share</span>
           </div>
+
+          {/* Generate Card (Author or Admin) */}
+          {(isAuthor || isAdmin) && data.answers.length > 0 && (
+
+            <button
+              onClick={handleGenerateSummary}
+              disabled={isGeneratingCard}
+              className={`flex items-center gap-2 group cursor-pointer ml-auto border border-accent-blue/30 rounded-full px-4 py-1.5 transition-all hover:bg-accent-blue/5 ${isGeneratingCard ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              title="Generate experience card from this thread"
+            >
+              <div className="p-1 rounded-full group-hover:bg-accent-blue/10 transition-colors">
+                {isGeneratingCard ? (
+                  <svg className="animate-spin h-5 w-5 text-accent-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-blue" viewBox="0 0 24 24">
+                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-xs font-bold text-accent-blue uppercase tracking-wide">
+                {isGeneratingCard ? "Generating..." : "Summarize to Card"}
+              </span>
+            </button>
+          )}
         </div>
+        {generationError && (
+          <p className="mt-2 text-xs font-medium text-red-500 text-right">{generationError}</p>
+        )}
       </div>
 
       {/* ── Reply box ──────────────────────────────────────────────── */}
