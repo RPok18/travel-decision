@@ -99,8 +99,6 @@ async def generate_summary(
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
-    if question.author_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Only author or admin can generate summary")
 
     answers = db.query(Answer).filter(Answer.question_id == question_id).limit(3).all()
     template = await _get_ai_summary(question, answers)
@@ -168,20 +166,9 @@ def get_card(
     if card.status == CardStatus.published:
         return card
 
-    # Draft access: allow admins and the source question's author
-    is_admin = current_user and current_user.is_admin
-    if is_admin:
-        return card
-
-    # Check if the current user is the author of the question that generated this card
+    # Draft access: allow all registered users
     if current_user:
-        source = db.query(CardSource).filter(CardSource.card_id == card_id).first()
-        if source:
-            answer = db.query(Answer).filter(Answer.id == source.answer_id).first()
-            if answer:
-                question = db.query(Question).filter(Question.id == answer.question_id).first()
-                if question and question.author_id == current_user.id:
-                    return card
+        return card
 
     raise HTTPException(status_code=403, detail="Card not published")
 

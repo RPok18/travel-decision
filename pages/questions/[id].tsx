@@ -163,7 +163,7 @@ export default function QuestionPage({ data }: QuestionPageProps) {
   };
 
   const handleGenerateSummary = async () => {
-    if (isGuest || !isAuthor || isGeneratingCard) return;
+    if (isGuest || isGeneratingCard) return;
     setIsGeneratingCard(true);
     setGenerationError(null);
     const token = localStorage.getItem("access_token");
@@ -351,8 +351,8 @@ export default function QuestionPage({ data }: QuestionPageProps) {
             <span className="text-sm font-medium text-green-500 group-hover:text-green-500 transition-all">Share</span>
           </div>
 
-          {/* Generate Card (Author or Admin) */}
-          {(isAuthor || isAdmin) && data.answers.length > 0 && (
+          {/* Generate Card (Registered users) */}
+          {!isGuest && data.answers.length > 0 && (
 
             <button
               onClick={handleGenerateSummary}
