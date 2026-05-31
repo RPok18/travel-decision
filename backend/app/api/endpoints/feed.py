@@ -1,22 +1,28 @@
 import logging
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_optional_user
 from app.models.enums import BudgetTier, EntityType, QuestionStatus, ReactionType
-from app.models.models import Answer, City, Question, Reaction, Topic, User, UserProfile
+from app.models.models import Answer, City, Question, Reaction, Topic, User
+from app.services import user_service
 
 logger = logging.getLogger("travel_decision")
 
 router = APIRouter()
 
-@router.get("", response_model=dict) # added response_model=dict as hint
-def get_feed(limit: int = 20, offset: int = 0, q: Optional[str] = None, db: Session = Depends(get_db)):
 
-    # Берем вопросы (это наши треды) + дату последнего ответа (как last_message_at)
+@router.get("", response_model=dict)
+def get_feed(
+    limit: int = 20,
+    offset: int = 0,
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     last_answer_sq = (
         db.query(
             Answer.question_id.label("question_id"),
@@ -25,7 +31,6 @@ def get_feed(limit: int = 20, offset: int = 0, q: Optional[str] = None, db: Sess
         .group_by(Answer.question_id)
         .subquery()
     )
-
     answer_count_sq = (
         db.query(
             Answer.question_id.label("question_id"),
@@ -51,19 +56,17 @@ def get_feed(limit: int = 20, offset: int = 0, q: Optional[str] = None, db: Sess
     )
 
     if q:
-        search = f"%{q.lower()}%"
-        rows = rows.filter(func.lower(Question.question_text).like(search))
+        rows = rows.filter(func.lower(Question.question_text).like(f"%{q.lower()}%"))
 
     rows = (
-        rows
-        .order_by(func.coalesce(last_answer_sq.c.last_message_at, Question.created_at).desc())
+        rows.order_by(
+            func.coalesce(last_answer_sq.c.last_message_at, Question.created_at).desc()
+        )
         .offset(offset)
         .limit(limit)
         .all()
     )
 
-
-    # Fetch like counts for all retrieved question ids
     question_ids = [r.id for r in rows]
     like_counts: dict = {}
     if question_ids:
@@ -91,11 +94,11 @@ def get_feed(limit: int = 20, offset: int = 0, q: Optional[str] = None, db: Sess
                 "author": {"id": r.author_id, "display_name": r.author_display_name},
                 "answer_count": r.answer_count or 0,
                 "like_count": like_counts.get(r.id, 0),
-                "vote_score": like_counts.get(r.id, 0), # Added for compatibility with redesign
+                "vote_score": like_counts.get(r.id, 0),
             }
         )
-
     return {"items": items}
+
 
 @router.post("")
 def create_feed_thread(
@@ -103,32 +106,16 @@ def create_feed_thread(
     db: Session = Depends(get_db),
     optional_user: Optional[User] = Depends(get_optional_user),
 ):
-    """
-    MVP: создаем публичный тред.
-    Supports media and authenticated users.
-    """
     text = (payload.get("question_text") or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="question_text is required")
 
-    media_url = payload.get("media_url")
+    # ── Resolve author ────────────────────────────────────────────────────
+    author = optional_user or user_service.resolve_or_create_guest(
+        db, payload.get("email")
+    )
 
-    # 1) Resolve user
-    user = optional_user
-    if not user:
-        # Fallback to email from payload or default MVP user
-        email = payload.get("email") or "member@travel.dev"
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            user = User(email=email)
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            if not db.query(UserProfile).filter(UserProfile.user_id == user.id).first():
-                db.add(UserProfile(user_id=user.id, cities_of_experience=[]))
-                db.commit()
-
-    # 2) гарантируем что есть city + topic для MVP
+    # ── Ensure city + topic exist (MVP fallback) ──────────────────────────
     city = db.query(City).first()
     if not city:
         city = City(name="Tashkent", country="Uzbekistan")
@@ -143,20 +130,19 @@ def create_feed_thread(
         db.commit()
         db.refresh(topic)
 
-    q = Question(
+    question = Question(
         city_id=city.id,
         topic_id=topic.id,
-        author_id=user.id,
+        author_id=author.id,
         duration="2 months",
         budget_tier=BudgetTier.mid,
         requirements=[],
         question_text=text,
-        media_url=media_url,
+        media_url=payload.get("media_url"),
         status=QuestionStatus.open,
         created_at=datetime.utcnow(),
     )
-    db.add(q)
+    db.add(question)
     db.commit()
-    db.refresh(q)
-
-    return {"id": q.id}
+    db.refresh(question)
+    return {"id": question.id}

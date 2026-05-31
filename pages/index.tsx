@@ -97,7 +97,7 @@ export default function Home({ items }: FeedProps) {
         </div>
       </div>
 
-      {/* ── Create post (TravelThreads style) ────────────────────────── */}
+      {/* ── Create post (Travel-Decision style) ────────────────────────── */}
       {isGuest ? (
         <div className="rounded-3xl border border-dashed border-border-dark bg-card-dark/50 p-8 mb-8 text-center">
           <h3 className="text-lg font-bold text-white mb-2">Join the community!</h3>

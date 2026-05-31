@@ -1,15 +1,11 @@
+const LOCAL_API_URL = "http://localhost:8000";
 const RENDER_API_URL = "https://travel-decision.onrender.com";
 
-const INTERNAL_API_URL = process.env.API_URL || RENDER_API_URL;
-const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || RENDER_API_URL;
-
-// Use localhost only if we are explicitly in a local environment and no URL is provided
-const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
-const fallback = isLocal ? "http://localhost:8000" : RENDER_API_URL;
+const isProduction = process.env.NODE_ENV === "production";
 
 export const API_URL = typeof window === "undefined"
-  ? (process.env.API_URL || RENDER_API_URL)
-  : (process.env.NEXT_PUBLIC_API_URL || fallback);
+  ? (process.env.API_URL || (isProduction ? RENDER_API_URL : LOCAL_API_URL))
+  : (process.env.NEXT_PUBLIC_API_URL || (isProduction ? RENDER_API_URL : LOCAL_API_URL));
 
 export const fetcher = async <T>(path: string, token?: string): Promise<T> => {
   const url = `${API_URL}${path}`;
@@ -23,12 +19,10 @@ export const fetcher = async <T>(path: string, token?: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-// Fetcher that automatically reads auth token from localStorage (client-side only)
 export const authedFetcher = async <T>(path: string): Promise<T> => {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   return fetcher<T>(path, token || undefined);
 };
-
 
 export const uploadFile = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
@@ -49,6 +43,3 @@ export const uploadFile = async (file: File): Promise<{ url: string }> => {
 
   return response.json();
 };
-
-
-

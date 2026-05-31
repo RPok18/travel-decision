@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = `You are TravelAI, an expert travel planning assistant for TravelThreads — a community platform for travel Q&A.
+const SYSTEM_PROMPT = `You are TravelAI, an expert travel planning assistant for Travel-Decision — a community platform for travel Q&A.
 
 Your role is to help families, couples, solo travelers, and groups plan their trips. You provide:
 - Personalized day-by-day itineraries
@@ -94,8 +94,8 @@ export default async function handler(
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": "https://travelthreads.vercel.app", // Needed for OpenRouter free tier
-                    "X-Title": "TravelThreads AI Planner",
+                    "HTTP-Referer": "https://travel-Decision.vercel.app", // Needed for OpenRouter free tier
+                    "X-Title": "Travel-Decision AI Planner",
                 },
                 body: JSON.stringify({
                     model: modelName,

@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             href="/"
             className="flex items-center gap-2 text-xl font-bold text-ink dark:text-white"
           >
-            <span className="">TravelThreads</span>
+            <span className="">Travel-Decision</span>
           </Link>
 
           {/* Search bar - wider and more integrated */}

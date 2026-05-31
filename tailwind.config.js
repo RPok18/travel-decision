@@ -18,7 +18,7 @@ module.exports = {
         "border-light": "#ccc",
         "hover-light": "#f6f7f8",
         "muted-light": "#7c7c7c",
-        // Dark mode surfaces (TravelThreads-inspired)
+        // Dark mode surfaces (Travel-Deciosion-inspired)
         "surface-dark": "#000000",
         "card-dark": "#121212",
         "border-dark": "#262626",

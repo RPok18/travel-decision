@@ -1,0 +1,57 @@
+@startuml
+actor User
+participant "Client\n(React UI)" as Client
+participant "API Layer\n(Next.js BFF)" as API
+participant "Card Generation\nEndpoint (FastAPI)" as Gen
+participant "Card Service" as Service
+participant "LLM Provider" as LLM
+participant "ORM/DB" as DB
+
+User -> Client: Clicks Generate Card
+activate Client
+Client -> API: POST /questions/{id}/generate-summary
+activate API
+API -> Gen: generate_card(question_id)
+activate Gen
+
+Gen -> Service: Fetch question + top answers
+activate Service
+Service -> DB: Query question + top answers
+activate DB
+DB --> Service: Returns question and answers
+deactivate DB
+Service --> Gen: Returns question + top answers
+deactivate Service
+
+alt Question not found
+    Gen --> API: Error 404
+    deactivate Gen
+else Question found
+    Gen -> LLM: Generate summary
+    activate LLM
+    alt LLM generation fails
+        LLM --> Gen: Error (500)
+    else LLM generation succeeds
+        LLM --> Gen: Structured JSON card
+    end
+    deactivate LLM
+
+    Gen -> Service: Save card (draft)
+    activate Service
+    Service -> DB: Insert card
+    activate DB
+    DB --> Service: Card saved (ID)
+    deactivate DB
+    Service --> Gen: Success + Card ID
+    deactivate Service
+
+    Gen --> API: Success + Card ID
+    deactivate Gen
+end
+
+API --> Client: Response (card data / error)
+deactivate API
+Client --> User: Display card or error
+deactivate Client
+
+@enduml
